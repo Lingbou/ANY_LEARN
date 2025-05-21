@@ -75,6 +75,26 @@ INSERT INTO `student`(`name`, `major`, `score`) VALUES('小蓝', '英语', 80);
 INSERT INTO `student`(`name`, `major`, `score`) VALUES('小黑', '化学', 20);
 
 
+DELETE FROM `student`;
+
+
 UPDATE `student`
 SET `major` = '英语文学系'
 WHERE `major` = '英语';
+
+SELECT * FROM `student`;
+
+UPDATE `student`
+SET `major` = '生化'
+WHERE `major` = '化学' OR `major` = '生物';
+
+UPDATE `student`
+SET `major` = '物理';
+
+DELETE FROM `student`
+WHERE `student_id` = 4;
+
+
+SELECT *
+FROM `student`
+ORDER BY score DESC;
