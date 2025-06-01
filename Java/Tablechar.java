@@ -15,4 +15,4 @@ public class Tablechar {
             System.out.println("Fuck" + '\t' + "6");
 
     }
-}
+}   
