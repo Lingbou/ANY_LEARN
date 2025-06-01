@@ -1,3 +1,5 @@
+package com.Lingbou.Learn1;
+
 /**
  * Variable Learn
  * 

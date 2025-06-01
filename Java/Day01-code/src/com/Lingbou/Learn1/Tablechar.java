@@ -1,3 +1,5 @@
+package com.Lingbou.Learn1;
+
 /**
  * "\t" 用法
  * 

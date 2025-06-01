@@ -1,3 +1,5 @@
+package com.Lingbou.Learn1;
+
 /**
  * Print basic data-type
  * 
