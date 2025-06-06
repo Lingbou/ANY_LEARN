@@ -70,10 +70,13 @@ public class StudentSystem {
         Scanner sc = new Scanner(System.in);
         System.out.println("输入要删除学生的ID：");
         String id = sc.next();
-        if(contains(list, id)) {
-
+        int index = getIndex(list, id);
+        if(index >= 0) {
+            list.remove(index);
+            System.out.println("id为：" + id + "的学生成功删除");
+        }else{
+            System.out.println("id不存在，删除失败");
         }
-        System.out.println("删除学生");
     }
 
     //修改学生
@@ -96,12 +99,11 @@ public class StudentSystem {
     }
 
     public static boolean contains(ArrayList<Student> list, String id) {
-        for (Student stu : list) {
-            if (stu.getId().equals(id)) {
-                return true;
-            }
+        if(getIndex(list, id) >= 0) {
+            return true;
+        }else{
+            return false;
         }
-        return false;
     }
 
     //通过id获取索引
