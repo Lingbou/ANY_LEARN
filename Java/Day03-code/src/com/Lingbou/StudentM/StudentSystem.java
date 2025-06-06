@@ -81,7 +81,30 @@ public class StudentSystem {
 
     //修改学生
     public static void updateStudent(ArrayList<Student> list){
-        System.out.println("修改学生");
+        Scanner sc = new Scanner(System.in);
+        System.out.println("输入要修改学生的ID：");
+        String id = sc.next();
+        int index = getIndex(list, id);
+
+        if(index == -1) {
+            System.out.println("要修改的学生ID：" + id + "不存在，请重新输入");
+            return ;
+        }
+
+        Student stu = list.get(index);
+
+        System.out.println("请输入要修改学生的姓名：");
+        String newName = sc.next();
+        stu.setName(newName);
+
+        System.out.println("请输入要修改学生的年龄：");
+        int newAge = sc.nextInt();
+        stu.setAge(newAge);
+
+        System.out.println("请输入要修改学生的家庭住址：");
+        String newAddress = sc.next();
+        stu.setAddress(newAddress);
+
     }
 
     //查询学生
@@ -97,7 +120,7 @@ public class StudentSystem {
         }
 
     }
-
+    
     public static boolean contains(ArrayList<Student> list, String id) {
         if(getIndex(list, id) >= 0) {
             return true;
@@ -115,5 +138,4 @@ public class StudentSystem {
         }
         return -1;
     }
-
 }
