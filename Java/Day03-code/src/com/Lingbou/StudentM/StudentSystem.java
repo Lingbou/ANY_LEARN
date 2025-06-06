@@ -36,7 +36,22 @@ public class StudentSystem {
 
     //添加学生
     public static void addStudent(ArrayList<Student> list){
-        System.out.println("添加学生");
+        Scanner sc = new Scanner(System.in);
+        System.out.println("请输入学生的ID：");
+        String id = sc.next();
+
+        System.out.println("请输入学生的姓名：");
+        String name = sc.next();
+
+        System.out.println("请输入学生的年龄：");
+        int age = sc.nextInt();
+
+        System.out.println("请输入学生的家庭住址：");
+        String address = sc.next();
+
+        Student s = new Student(name, id, age, address);
+
+        list.add(s);
     }
 
     //删除学生
@@ -51,7 +66,16 @@ public class StudentSystem {
 
     //查询学生
     public static void queryStudent(ArrayList<Student> list){
-        System.out.println("查询学生");
+        if(list.isEmpty()) {
+            System.out.println("当前无学生信息，请添加后查询");
+            return ;
+        }
+        System.out.println("id\t姓名\t年龄\t家庭住址");
+        for(int i = 0; i < list.size(); i++) {
+            Student stu = list.get(i);
+            System.out.println(stu.getId() + "\t" + stu.getName() + "\t" + stu.getAge() + "\t" + stu.getAddress());
+        }
+
     }
 
 
