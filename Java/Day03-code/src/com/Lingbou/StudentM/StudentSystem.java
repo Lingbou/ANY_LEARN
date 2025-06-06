@@ -37,8 +37,18 @@ public class StudentSystem {
     //添加学生
     public static void addStudent(ArrayList<Student> list){
         Scanner sc = new Scanner(System.in);
+
         System.out.println("请输入学生的ID：");
-        String id = sc.next();
+        String id = null;
+        while(true){
+            id = sc.next();
+            if(contains(list, id)){
+                System.out.println("ID存在，请重新录入：");
+                continue;
+            }else{
+                break;
+            }
+        }
 
         System.out.println("请输入学生的姓名：");
         String name = sc.next();
@@ -52,10 +62,17 @@ public class StudentSystem {
         Student s = new Student(name, id, age, address);
 
         list.add(s);
+        System.out.println("学生信息添加成功");
     }
 
     //删除学生
     public static void deleteStudent(ArrayList<Student> list){
+        Scanner sc = new Scanner(System.in);
+        System.out.println("输入要删除学生的ID：");
+        String id = sc.next();
+        if(contains(list, id)) {
+
+        }
         System.out.println("删除学生");
     }
 
@@ -78,7 +95,23 @@ public class StudentSystem {
 
     }
 
+    public static boolean contains(ArrayList<Student> list, String id) {
+        for (Student stu : list) {
+            if (stu.getId().equals(id)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
-
+    //通过id获取索引
+    public static int getIndex(ArrayList<Student> list, String id) {
+        for(int i = 0; i < list.size(); i++) {
+            if(list.get(i).getId().equals(id)) {
+                return i;
+            }
+        }
+        return -1;
+    }
 
 }
