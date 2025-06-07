@@ -120,7 +120,7 @@ public class StudentSystem {
         }
 
     }
-    
+
     public static boolean contains(ArrayList<Student> list, String id) {
         if(getIndex(list, id) >= 0) {
             return true;
@@ -139,3 +139,9 @@ public class StudentSystem {
         return -1;
     }
 }
+
+
+
+
+
+
