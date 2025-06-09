@@ -2,11 +2,16 @@ package com.Lingbou.Extends;
 
 class Fu {
     String name = "nima";
+
+    public void sol(){
+        System.out.println("nitamade");
+    }
 }
 
 class Zi extends Fu {
     String name = "nitama";
 
+    @Override
     public void sol() {
         String name = "caonimade";
         System.out.println(name);
