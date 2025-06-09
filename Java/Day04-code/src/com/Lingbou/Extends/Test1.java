@@ -8,8 +8,11 @@ class Zi extends Fu {
     String name = "nitama";
 
     public void sol() {
-//        String name = "caonimade";
+        String name = "caonimade";
         System.out.println(name);
+        System.out.println(this.name);
+        System.out.println(super.name);
+
     }
 }
 
