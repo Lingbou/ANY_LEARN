@@ -5,6 +5,16 @@ public class Test {
         Fu a = new Zi();
         System.out.println(a.name);
         a.show();
+
+//        if(a instanceof Zi) {
+//           Zi z = (Zi)a;
+//        }
+        if(a instanceof Zi d) {
+           d.BIBIBI();
+        }else{
+            System.out.println("没有这个子类");
+        }
+
     }
 }
 
@@ -22,5 +32,9 @@ class Zi extends Fu {
     @Override
     public void show() {
         System.out.println("Zi");
+    }
+
+    public void BIBIBI() {
+        System.out.println("子类的特有功能");
     }
 }
