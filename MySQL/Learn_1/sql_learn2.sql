@@ -7,7 +7,7 @@ CREATE TABLE `employee`(
     `branch_id` INT,
     `sup_id` INT
 );
-
+ 
 CREATE TABLE `branch`(
     `branch_id` INT PRIMARY KEY,
     `branch_name` VARCHAR(20),
