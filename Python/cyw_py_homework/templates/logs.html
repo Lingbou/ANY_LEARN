@@ -1,0 +1,435 @@
+{% extends "base.html" %}
+
+{% block title %}库存变动记录 - 库存管理系统{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item active">库存变动记录</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-clock-history"></i> 库存变动记录</h2>
+    <div class="btn-group">
+        <button class="btn btn-outline-primary" onclick="exportLogs()">
+            <i class="bi bi-download"></i> 导出记录
+        </button>
+        <button class="btn btn-outline-secondary" onclick="refreshLogs()">
+            <i class="bi bi-arrow-clockwise"></i> 刷新
+        </button>
+    </div>
+</div>
+
+<!-- 筛选条件 -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">筛选条件</h5>
+    </div>
+    <div class="card-body">
+        <form id="filterForm" class="row g-3">
+            <div class="col-md-3">
+                <label for="productFilter" class="form-label">商品</label>
+                <select class="form-select" id="productFilter">
+                    <option value="">所有商品</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="actionFilter" class="form-label">操作类型</label>
+                <select class="form-select" id="actionFilter">
+                    <option value="">所有操作</option>
+                    <option value="in">入库</option>
+                    <option value="out">出库</option>
+                    <option value="adjust">调整</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="startDate" class="form-label">开始日期</label>
+                <input type="date" class="form-control" id="startDate">
+            </div>
+            <div class="col-md-2">
+                <label for="endDate" class="form-label">结束日期</label>
+                <input type="date" class="form-control" id="endDate">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">&nbsp;</label>
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary">筛选</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 统计卡片 -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h6 class="card-title">总入库量</h6>
+                <h3 id="totalInQuantity">-</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body text-center">
+                <h6 class="card-title">总出库量</h6>
+                <h3 id="totalOutQuantity">-</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body text-center">
+                <h6 class="card-title">今日操作</h6>
+                <h3 id="todayOperations">-</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body text-center">
+                <h6 class="card-title">总记录数</h6>
+                <h3 id="totalRecords">-</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 记录列表 -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">变动记录列表</h5>
+    </div>
+    <div class="card-body">
+        <div id="logsContainer">
+            <div class="text-center">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">加载中...</span>
+                </div>
+                <p class="mt-2">正在加载变动记录...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 记录详情模态框 -->
+<div class="modal fade" id="logDetailModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">记录详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="logDetailContent">
+                    <!-- 记录详情内容 -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadStatistics();
+    loadProducts();
+    loadLogs();
+
+    // 设置默认日期范围（最近7天）
+    const today = new Date();
+    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    document.getElementById('startDate').value = weekAgo.toISOString().split('T')[0];
+    document.getElementById('endDate').value = today.toISOString().split('T')[0];
+
+    // 筛选表单提交
+    document.getElementById('filterForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        loadLogs();
+    });
+});
+
+function loadStatistics() {
+    fetch('/api/logs/statistics')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('totalInQuantity').textContent = data.data.total_in_quantity;
+                document.getElementById('totalOutQuantity').textContent = data.data.total_out_quantity;
+                document.getElementById('todayOperations').textContent = data.data.today_operations;
+            }
+        })
+        .catch(error => console.error('加载统计数据失败:', error));
+}
+
+function loadProducts() {
+    fetch('/api/products/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const select = document.getElementById('productFilter');
+                data.data.forEach(product => {
+                    const option = document.createElement('option');
+                    option.value = product.id;
+                    option.textContent = `${product.name} (${product.sku})`;
+                    select.appendChild(option);
+                });
+            }
+        })
+        .catch(error => console.error('加载商品列表失败:', error));
+}
+
+function loadLogs(page = 1) {
+    const productId = document.getElementById('productFilter').value;
+    const action = document.getElementById('actionFilter').value;
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+
+    let url = `/api/logs/?page=${page}&per_page=20`;
+    if (productId) url += `&product_id=${productId}`;
+    if (action) url += `&action=${action}`;
+    if (startDate) url += `&start_date=${startDate}`;
+    if (endDate) url += `&end_date=${endDate}`;
+
+    showLoading();
+
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            if (data.success) {
+                renderLogs(data);
+                document.getElementById('totalRecords').textContent = data.pagination.total;
+            } else {
+                showAlert(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            showAlert('加载记录失败', 'error');
+            console.error('加载记录失败:', error);
+        });
+}
+
+function renderLogs(data) {
+    const container = document.getElementById('logsContainer');
+
+    if (data.data.length === 0) {
+        container.innerHTML = '<div class="text-center text-muted py-4"><i class="bi bi-inbox fa-3x"></i><p>暂无变动记录</p></div>';
+        return;
+    }
+
+    let html = `
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>时间</th>
+                        <th>商品信息</th>
+                        <th>操作类型</th>
+                        <th>变动数量</th>
+                        <th>库存变化</th>
+                        <th>原因</th>
+                        <th>操作人</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    data.data.forEach(log => {
+        const actionBadge = getActionBadge(log.action);
+        const quantityBadge = getQuantityBadge(log.action, log.quantity);
+        const stockChange = getStockChange(log);
+
+        html += `
+            <tr>
+                <td><small>${formatDateTime(log.created_at)}</small></td>
+                <td>
+                    <div class="fw-bold">${log.product_name}</div>
+                    <small class="text-muted">ID: ${log.product_id}</small>
+                </td>
+                <td>${actionBadge}</td>
+                <td>${quantityBadge}</td>
+                <td>${stockChange}</td>
+                <td><span class="text-truncate d-inline-block" style="max-width: 150px;" title="${log.reason}">${log.reason}</span></td>
+                <td><small>${log.operator}</small></td>
+                <td>
+                    <button class="btn btn-sm btn-outline-info" onclick="viewLogDetail(${log.id})">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += '</tbody></table></div>';
+
+    // 分页
+    if (data.pagination.pages > 1) {
+        html += renderPagination(data.pagination, loadLogs);
+    }
+
+    container.innerHTML = html;
+}
+
+function getActionBadge(action) {
+    const badges = {
+        'in': '<span class="badge bg-success">入库</span>',
+        'out': '<span class="badge bg-danger">出库</span>',
+        'adjust': '<span class="badge bg-warning">调整</span>'
+    };
+    return badges[action] || '<span class="badge bg-secondary">未知</span>';
+}
+
+function getQuantityBadge(action, quantity) {
+    const sign = action === 'out' ? '-' : '+';
+    const colorClass = action === 'in' ? 'text-success' : (action === 'out' ? 'text-danger' : 'text-warning');
+    return `<span class="fw-bold ${colorClass}">${sign}${quantity}</span>`;
+}
+
+function getStockChange(log) {
+    const direction = log.after_quantity > log.before_quantity ? 'up' :
+                     (log.after_quantity < log.before_quantity ? 'down' : 'right');
+    const icon = direction === 'up' ? 'bi-arrow-up text-success' :
+                 (direction === 'down' ? 'bi-arrow-down text-danger' : 'bi-arrow-right text-secondary');
+    const color = log.after_quantity > log.before_quantity ? 'text-success' :
+                  (log.after_quantity < log.before_quantity ? 'text-danger' : 'text-muted');
+
+    return `
+        <div class="${color}">
+            <i class="bi ${icon}"></i>
+            ${log.before_quantity} → ${log.after_quantity}
+        </div>
+    `;
+}
+
+function viewLogDetail(logId) {
+    showLoading();
+
+    fetch(`/api/logs/${logId}`)
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            if (data.success) {
+                renderLogDetail(data.data);
+                new bootstrap.Modal(document.getElementById('logDetailModal')).show();
+            } else {
+                showAlert(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            showAlert('获取记录详情失败', 'error');
+            console.error('获取记录详情失败:', error);
+        });
+}
+
+function renderLogDetail(log) {
+    const container = document.getElementById('logDetailContent');
+
+    const actionBadge = getActionBadge(log.action);
+    const quantityText = log.action === 'out' ? `-${log.quantity}` : `+${log.quantity}`;
+
+    let html = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>基本信息</h6>
+                <table class="table table-sm">
+                    <tr>
+                        <td><strong>记录ID:</strong></td>
+                        <td>${log.id}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>商品名称:</strong></td>
+                        <td>${log.product_name}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>商品ID:</strong></td>
+                        <td>${log.product_id}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>操作类型:</strong></td>
+                        <td>${actionBadge}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>变动数量:</strong></td>
+                        <td class="fw-bold ${log.action === 'in' ? 'text-success' : (log.action === 'out' ? 'text-danger' : 'text-warning')}">${quantityText}</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6>库存变化</h6>
+                <div class="text-center my-3">
+                    <div class="d-flex justify-content-center align-items-center">
+                        <div class="text-center">
+                            <div class="border rounded p-3">
+                                <div class="text-muted small">变动前</div>
+                                <div class="h4">${log.before_quantity}</div>
+                            </div>
+                        </div>
+                        <div class="mx-3">
+                            <i class="bi bi-arrow-right h4 text-muted"></i>
+                        </div>
+                        <div class="text-center">
+                            <div class="border rounded p-3">
+                                <div class="text-muted small">变动后</div>
+                                <div class="h4">${log.after_quantity}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-3">
+            <div class="col-12">
+                <h6>其他信息</h6>
+                <table class="table table-sm">
+                    <tr>
+                        <td><strong>变动原因:</strong></td>
+                        <td>${log.reason}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>操作人:</strong></td>
+                        <td>${log.operator}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>操作时间:</strong></td>
+                        <td>${formatDateTime(log.created_at)}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    `;
+
+    container.innerHTML = html;
+}
+
+function exportLogs() {
+    const productId = document.getElementById('productFilter').value;
+    const action = document.getElementById('actionFilter').value;
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+
+    let url = `/api/logs/`;
+    const params = new URLSearchParams();
+    if (productId) params.append('product_id', productId);
+    if (action) params.append('action', action);
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+
+    // 这里简化实现，实际项目中应该生成CSV或Excel文件
+    showAlert('导出功能开发中...', 'info');
+}
+
+function refreshLogs() {
+    loadStatistics();
+    loadLogs();
+}
+</script>
+{% endblock %}

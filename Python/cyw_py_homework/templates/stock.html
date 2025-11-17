@@ -1,0 +1,695 @@
+{% extends "base.html" %}
+
+{% block title %}库存管理 - 库存管理系统{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item active">库存管理</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-archive"></i> 库存管理</h2>
+    <div class="btn-group">
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#stockInModal">
+            <i class="bi bi-plus-circle"></i> 入库
+        </button>
+        <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#stockOutModal">
+            <i class="bi bi-dash-circle"></i> 出库
+        </button>
+        <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#stockAdjustModal">
+            <i class="bi bi-pencil-square"></i> 调整
+        </button>
+    </div>
+</div>
+
+<!-- 库存概览 -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">总库存量</h6>
+                        <h3 id="totalStockVolume">-</h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-archive fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">正常库存</h6>
+                        <h3 id="normalStockCount">-</h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-check-circle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">低库存商品</h6>
+                        <h3 id="lowStockCount">-</h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-exclamation-triangle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 库存列表 -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">库存列表</h5>
+    </div>
+    <div class="card-body">
+        <!-- 搜索和筛选 -->
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <input type="text" class="form-control" id="productSearch" placeholder="搜索商品名称或SKU">
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" id="stockStatusFilter">
+                    <option value="">所有状态</option>
+                    <option value="normal">正常库存</option>
+                    <option value="low">低库存</option>
+                    <option value="out">无库存</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-outline-primary" onclick="loadStockList()">搜索</button>
+            </div>
+            <div class="col-md-4 text-end">
+                <button class="btn btn-outline-warning" onclick="loadLowStockOnly()">
+                    <i class="bi bi-exclamation-triangle"></i> 查看低库存商品
+                </button>
+            </div>
+        </div>
+
+        <div id="stockContainer">
+            <div class="text-center">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">加载中...</span>
+                </div>
+                <p class="mt-2">正在加载库存列表...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 入库模态框 -->
+<div class="modal fade" id="stockInModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">库存入库</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="stockInForm">
+                    <div class="mb-3">
+                        <label for="inProduct" class="form-label">选择商品 *</label>
+                        <select class="form-select" id="inProduct" required>
+                            <option value="">请选择商品</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="inQuantity" class="form-label">入库数量 *</label>
+                        <input type="number" class="form-control" id="inQuantity" min="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="inReason" class="form-label">入库原因</label>
+                        <textarea class="form-control" id="inReason" rows="2" placeholder="例如：采购入库、退货入库等"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="inOperator" class="form-label">操作人</label>
+                        <input type="text" class="form-control" id="inOperator" value="管理员">
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <span id="inCurrentStock">当前库存：请选择商品</span>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-success" onclick="performStockIn()">确认入库</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 出库模态框 -->
+<div class="modal fade" id="stockOutModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">库存出库</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="stockOutForm">
+                    <div class="mb-3">
+                        <label for="outProduct" class="form-label">选择商品 *</label>
+                        <select class="form-select" id="outProduct" required>
+                            <option value="">请选择商品</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="outQuantity" class="form-label">出库数量 *</label>
+                        <input type="number" class="form-control" id="outQuantity" min="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="outReason" class="form-label">出库原因</label>
+                        <textarea class="form-control" id="outReason" rows="2" placeholder="例如：销售出库、损耗出库等"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="outOperator" class="form-label">操作人</label>
+                        <input type="text" class="form-control" id="outOperator" value="管理员">
+                    </div>
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <span id="outCurrentStock">当前库存：请选择商品</span>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" onclick="performStockOut()">确认出库</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 库存调整模态框 -->
+<div class="modal fade" id="stockAdjustModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">库存调整</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="stockAdjustForm">
+                    <div class="mb-3">
+                        <label for="adjustProduct" class="form-label">选择商品 *</label>
+                        <select class="form-select" id="adjustProduct" required>
+                            <option value="">请选择商品</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="adjustQuantity" class="form-label">调整后数量 *</label>
+                        <input type="number" class="form-control" id="adjustQuantity" min="0" required>
+                        <div class="form-text">请输入调整后的最终库存数量</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="adjustReason" class="form-label">调整原因 *</label>
+                        <textarea class="form-control" id="adjustReason" rows="2" placeholder="例如：盘点调整、损益调整等" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="adjustOperator" class="form-label">操作人</label>
+                        <input type="text" class="form-control" id="adjustOperator" value="管理员">
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <span id="adjustCurrentStock">当前库存：请选择商品</span>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-warning" onclick="performStockAdjust()">确认调整</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadStockList();
+    loadProductOptions();
+    updateStockSummary();
+
+    // 监听商品选择变化
+    ['inProduct', 'outProduct', 'adjustProduct'].forEach(id => {
+        document.getElementById(id).addEventListener('change', function() {
+            updateCurrentStockInfo(id);
+        });
+    });
+});
+
+function loadProductOptions() {
+    fetch('/api/products/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const inSelect = document.getElementById('inProduct');
+                const outSelect = document.getElementById('outProduct');
+                const adjustSelect = document.getElementById('adjustProduct');
+
+                [inSelect, outSelect, adjustSelect].forEach(select => {
+                    data.data.forEach(product => {
+                        const option = document.createElement('option');
+                        option.value = product.id;
+                        option.textContent = `${product.name} (${product.sku}) - 当前库存: ${product.stock_quantity}`;
+                        option.dataset.stock = product.stock_quantity;
+                        select.appendChild(option);
+                    });
+                });
+            }
+        })
+        .catch(error => console.error('加载商品列表失败:', error));
+}
+
+function updateCurrentStockInfo(selectId) {
+    const select = document.getElementById(selectId);
+    const selectedOption = select.options[select.selectedIndex];
+    const currentStock = selectedOption ? selectedOption.dataset.stock : 0;
+
+    if (selectId === 'inProduct') {
+        document.getElementById('inCurrentStock').textContent = `当前库存：${currentStock}`;
+    } else if (selectId === 'outProduct') {
+        document.getElementById('outCurrentStock').textContent = `当前库存：${currentStock}，最大可出库：${currentStock}`;
+        document.getElementById('outQuantity').max = currentStock;
+    } else if (selectId === 'adjustProduct') {
+        document.getElementById('adjustCurrentStock').textContent = `当前库存：${currentStock}`;
+    }
+}
+
+function loadStockList(page = 1, lowStockOnly = false) {
+    const searchTerm = document.getElementById('productSearch').value;
+    const statusFilter = document.getElementById('stockStatusFilter').value;
+
+    let url = `/api/stock/?page=${page}`;
+    if (lowStockOnly) {
+        url = '/api/stock/low-stock';
+    } else if (searchTerm) {
+        // API不支持搜索，这里在前端过滤
+    }
+
+    showLoading();
+
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            if (data.success) {
+                renderStockList(data);
+                if (!lowStockOnly) {
+                    updateStockSummary(data);
+                }
+            } else {
+                showAlert(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            showAlert('加载库存列表失败', 'error');
+            console.error('加载库存失败:', error);
+        });
+}
+
+function renderStockList(data) {
+    const container = document.getElementById('stockContainer');
+
+    if (data.data.length === 0) {
+        container.innerHTML = '<div class="text-center text-muted py-4"><i class="bi bi-inbox fa-3x"></i><p>暂无库存数据</p></div>';
+        return;
+    }
+
+    let html = `
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>商品信息</th>
+                        <th>SKU</th>
+                        <th>当前库存</th>
+                        <th>最低库存</th>
+                        <th>库存状态</th>
+                        <th>库存位置</th>
+                        <th>最后更新</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    data.data.forEach(stock => {
+        const stockStatus = getStockStatus(stock.quantity, stock.min_quantity);
+        const stockProgressBar = getStockProgressBar(stock.quantity, stock.min_quantity, stock.max_quantity);
+
+        html += `
+            <tr>
+                <td>
+                    <div class="fw-bold">${stock.product_name}</div>
+                    ${stockProgressBar}
+                </td>
+                <td><code>${stock.product_sku || 'N/A'}</code></td>
+                <td><span class="fw-bold">${stock.quantity}</span></td>
+                <td>${stock.min_quantity || 0}</td>
+                <td>${stockStatus}</td>
+                <td>${stock.location || '未设置'}</td>
+                <td><small>${formatDateTime(stock.updated_at)}</small></td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-success" onclick="quickStockIn(${stock.product_id})">
+                            <i class="bi bi-plus"></i>
+                        </button>
+                        <button class="btn btn-outline-danger" onclick="quickStockOut(${stock.product_id})" ${stock.quantity === 0 ? 'disabled' : ''}>
+                            <i class="bi bi-dash"></i>
+                        </button>
+                        <button class="btn btn-outline-info" onclick="viewStockHistory(${stock.product_id})">
+                            <i class="bi bi-clock-history"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+}
+
+function getStockProgressBar(current, min, max) {
+    if (max && max > 0) {
+        const percentage = Math.min((current / max) * 100, 100);
+        let colorClass = 'bg-success';
+        if (current <= min) colorClass = 'bg-danger';
+        else if (percentage < 50) colorClass = 'bg-warning';
+
+        return `
+            <div class="progress" style="height: 8px;">
+                <div class="progress-bar ${colorClass}" style="width: ${percentage}%"></div>
+            </div>
+            <small class="text-muted">${current} / ${max} (${percentage.toFixed(1)}%)</small>
+        `;
+    }
+    return '';
+}
+
+function getStockStatus(current, min) {
+    if (current === 0) return '<span class="badge bg-danger">无库存</span>';
+    if (current <= min) return '<span class="badge bg-warning">低库存</span>';
+    return '<span class="badge bg-success">正常</span>';
+}
+
+function updateStockSummary(data) {
+    if (!data) return;
+
+    let totalStock = 0;
+    let normalCount = 0;
+    let lowStockCount = 0;
+
+    data.data.forEach(stock => {
+        totalStock += stock.quantity;
+        if (stock.quantity > stock.min_quantity) {
+            normalCount++;
+        } else {
+            lowStockCount++;
+        }
+    });
+
+    document.getElementById('totalStockVolume').textContent = totalStock;
+    document.getElementById('normalStockCount').textContent = normalCount;
+    document.getElementById('lowStockCount').textContent = lowStockCount;
+}
+
+function performStockIn() {
+    const productId = document.getElementById('inProduct').value;
+    const quantity = parseInt(document.getElementById('inQuantity').value);
+    const reason = document.getElementById('inReason').value;
+    const operator = document.getElementById('inOperator').value;
+
+    if (!productId || !quantity) {
+        showAlert('请填写必填字段', 'error');
+        return;
+    }
+
+    const data = {
+        product_id: parseInt(productId),
+        quantity: quantity,
+        reason: reason || '入库操作',
+        operator: operator
+    };
+
+    showLoading();
+
+    fetch('/api/stock/add', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        hideLoading();
+        if (result.success) {
+            showAlert('入库成功', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('stockInModal')).hide();
+            document.getElementById('stockInForm').reset();
+            loadStockList();
+            updateProductOptions();
+        } else {
+            showAlert(result.message, 'error');
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        showAlert('入库失败', 'error');
+        console.error('入库失败:', error);
+    });
+}
+
+function performStockOut() {
+    const productId = document.getElementById('outProduct').value;
+    const quantity = parseInt(document.getElementById('outQuantity').value);
+    const reason = document.getElementById('outReason').value;
+    const operator = document.getElementById('outOperator').value;
+
+    if (!productId || !quantity) {
+        showAlert('请填写必填字段', 'error');
+        return;
+    }
+
+    const data = {
+        product_id: parseInt(productId),
+        quantity: quantity,
+        reason: reason || '出库操作',
+        operator: operator
+    };
+
+    showLoading();
+
+    fetch('/api/stock/reduce', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        hideLoading();
+        if (result.success) {
+            showAlert('出库成功', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('stockOutModal')).hide();
+            document.getElementById('stockOutForm').reset();
+            loadStockList();
+            updateProductOptions();
+        } else {
+            showAlert(result.message, 'error');
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        showAlert('出库失败', 'error');
+        console.error('出库失败:', error);
+    });
+}
+
+function performStockAdjust() {
+    const productId = document.getElementById('adjustProduct').value;
+    const quantity = parseInt(document.getElementById('adjustQuantity').value);
+    const reason = document.getElementById('adjustReason').value;
+    const operator = document.getElementById('adjustOperator').value;
+
+    if (!productId || quantity === null || !reason) {
+        showAlert('请填写必填字段', 'error');
+        return;
+    }
+
+    const data = {
+        product_id: parseInt(productId),
+        quantity: quantity,
+        reason: reason,
+        operator: operator
+    };
+
+    showLoading();
+
+    fetch('/api/stock/adjust', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        hideLoading();
+        if (result.success) {
+            showAlert('库存调整成功', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('stockAdjustModal')).hide();
+            document.getElementById('stockAdjustForm').reset();
+            loadStockList();
+            updateProductOptions();
+        } else {
+            showAlert(result.message, 'error');
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        showAlert('库存调整失败', 'error');
+        console.error('库存调整失败:', error);
+    });
+}
+
+function quickStockIn(productId) {
+    const quantity = prompt('请输入入库数量:');
+    if (quantity && !isNaN(quantity) && quantity > 0) {
+        const data = {
+            product_id: productId,
+            quantity: parseInt(quantity),
+            reason: '快速入库',
+            operator: '管理员'
+        };
+
+        showLoading();
+
+        fetch('/api/stock/add', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            hideLoading();
+            if (result.success) {
+                showAlert('入库成功', 'success');
+                loadStockList();
+                updateProductOptions();
+            } else {
+                showAlert(result.message, 'error');
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            showAlert('入库失败', 'error');
+            console.error('入库失败:', error);
+        });
+    }
+}
+
+function quickStockOut(productId) {
+    const quantity = prompt('请输入出库数量:');
+    if (quantity && !isNaN(quantity) && quantity > 0) {
+        const data = {
+            product_id: productId,
+            quantity: parseInt(quantity),
+            reason: '快速出库',
+            operator: '管理员'
+        };
+
+        showLoading();
+
+        fetch('/api/stock/reduce', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            hideLoading();
+            if (result.success) {
+                showAlert('出库成功', 'success');
+                loadStockList();
+                updateProductOptions();
+            } else {
+                showAlert(result.message, 'error');
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            showAlert('出库失败', 'error');
+            console.error('出库失败:', error);
+        });
+    }
+}
+
+function loadLowStockOnly() {
+    showLoading();
+
+    fetch('/api/stock/low-stock')
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            if (data.success) {
+                // 转换为与普通列表相同的格式
+                const mockData = {
+                    success: true,
+                    data: data.data,
+                    pagination: {
+                        page: 1,
+                        pages: 1,
+                        total: data.data.length
+                    }
+                };
+                renderStockList(mockData);
+            } else {
+                showAlert(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            showAlert('加载低库存商品失败', 'error');
+            console.error('加载低库存失败:', error);
+        });
+}
+
+function viewStockHistory(productId) {
+    window.location.href = `/logs?product_id=${productId}`;
+}
+
+function updateProductOptions() {
+    // 清空并重新加载商品选项
+    ['inProduct', 'outProduct', 'adjustProduct'].forEach(id => {
+        const select = document.getElementById(id);
+        select.innerHTML = '<option value="">请选择商品</option>';
+    });
+    loadProductOptions();
+}
+</script>
+{% endblock %}

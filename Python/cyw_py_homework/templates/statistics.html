@@ -1,0 +1,489 @@
+{% extends "base.html" %}
+
+{% block title %}统计分析 - 库存管理系统{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item active">统计分析</li>
+{% endblock %}
+
+{% block content %}
+<h2><i class="bi bi-bar-chart"></i> 统计分析</h2>
+
+<!-- 统计概览 -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h6 class="card-title">商品总数</h6>
+                <h3 id="totalProducts">-</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h6 class="card-title">总库存价值</h6>
+                <h3 id="totalStockValue">-</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body text-center">
+                <h6 class="card-title">平均库存量</h6>
+                <h3 id="avgStockQuantity">-</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body text-center">
+                <h6 class="card-title">低库存占比</h6>
+                <h3 id="lowStockPercentage">-</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 图表区域 -->
+<div class="row mb-4">
+    <!-- 库存操作趋势 -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">最近7天操作趋势</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="trendChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+    <!-- 库存分类统计 -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">商品分类统计</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="categoryChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <!-- 库存状态分布 -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">库存状态分布</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="stockStatusChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+    <!-- 入库出库对比 -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">入库出库对比</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="inOutChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 详细数据表格 -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">库存详情统计</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>商品名称</th>
+                                <th>分类</th>
+                                <th>单价</th>
+                                <th>当前库存</th>
+                                <th>库存价值</th>
+                                <th>最低库存</th>
+                                <th>库存状态</th>
+                                <th>库存周转率</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stockDetailsTable">
+                            <tr>
+                                <td colspan="8" class="text-center">
+                                    <div class="spinner-border spinner-border-sm" role="status">
+                                        <span class="visually-hidden">加载中...</span>
+                                    </div>
+                                    正在加载数据...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 时间筛选 -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 5">
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#timeFilterModal">
+        <i class="bi bi-calendar"></i> 时间筛选
+    </button>
+</div>
+
+<!-- 时间筛选模态框 -->
+<div class="modal fade" id="timeFilterModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">筛选时间范围</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="statsStartDate" class="form-label">开始日期</label>
+                    <input type="date" class="form-control" id="statsStartDate">
+                </div>
+                <div class="mb-3">
+                    <label for="statsEndDate" class="form-label">结束日期</label>
+                    <input type="date" class="form-control" id="statsEndDate">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="applyTimeFilter()">应用筛选</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let trendChart, categoryChart, stockStatusChart, inOutChart;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // 设置默认时间范围（最近30天）
+    const today = new Date();
+    const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+    document.getElementById('statsStartDate').value = thirtyDaysAgo.toISOString().split('T')[0];
+    document.getElementById('statsEndDate').value = today.toISOString().split('T')[0];
+
+    loadStatistics();
+});
+
+function loadStatistics() {
+    loadBasicStatistics();
+    loadTrendChart();
+    loadCategoryChart();
+    loadStockStatusChart();
+    loadInOutChart();
+    loadStockDetails();
+}
+
+function loadBasicStatistics() {
+    // 加载商品和库存统计
+    Promise.all([
+        fetch('/api/products/').then(r => r.json()),
+        fetch('/api/stock/').then(r => r.json()),
+        fetch('/api/logs/statistics').then(r => r.json())
+    ]).then(([productsData, stockData, logsData]) => {
+        if (productsData.success && stockData.success && logsData.success) {
+            // 计算总库存价值
+            let totalValue = 0;
+            let totalQuantity = 0;
+            let lowStockCount = 0;
+
+            stockData.data.forEach(stock => {
+                const product = productsData.data.find(p => p.id === stock.product_id);
+                if (product) {
+                    totalValue += stock.quantity * product.price;
+                    totalQuantity += stock.quantity;
+                }
+                if (stock.is_low_stock) lowStockCount++;
+            });
+
+            const avgQuantity = stockData.data.length > 0 ? Math.round(totalQuantity / stockData.data.length) : 0;
+            const lowStockPercentage = stockData.data.length > 0 ? (lowStockCount / stockData.data.length * 100).toFixed(1) : 0;
+
+            document.getElementById('totalProducts').textContent = productsData.pagination.total;
+            document.getElementById('totalStockValue').textContent = `¥${totalValue.toFixed(2)}`;
+            document.getElementById('avgStockQuantity').textContent = avgQuantity;
+            document.getElementById('lowStockPercentage').textContent = `${lowStockPercentage}%`;
+        }
+    }).catch(error => console.error('加载基础统计失败:', error));
+}
+
+function loadTrendChart() {
+    fetch('/api/logs/statistics')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.data.recent_trend) {
+                const ctx = document.getElementById('trendChart').getContext('2d');
+
+                if (trendChart) {
+                    trendChart.destroy();
+                }
+
+                trendChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.data.recent_trend.map(item => formatChartDate(item.date)),
+                        datasets: [{
+                            label: '操作次数',
+                            data: data.data.recent_trend.map(item => item.count),
+                            borderColor: '#007bff',
+                            backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        })
+        .catch(error => console.error('加载趋势数据失败:', error));
+}
+
+function loadCategoryChart() {
+    fetch('/api/products/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 按分类统计
+                const categoryStats = {};
+                data.data.forEach(product => {
+                    const category = product.category || '未分类';
+                    if (!categoryStats[category]) {
+                        categoryStats[category] = 0;
+                    }
+                    categoryStats[category]++;
+                });
+
+                const ctx = document.getElementById('categoryChart').getContext('2d');
+
+                if (categoryChart) {
+                    categoryChart.destroy();
+                }
+
+                categoryChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(categoryStats),
+                        datasets: [{
+                            data: Object.values(categoryStats),
+                            backgroundColor: [
+                                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
+                                '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom'
+                            }
+                        }
+                    }
+                });
+            }
+        })
+        .catch(error => console.error('加载分类统计失败:', error));
+}
+
+function loadStockStatusChart() {
+    fetch('/api/stock/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                let normalStock = 0;
+                let lowStock = 0;
+                let noStock = 0;
+
+                data.data.forEach(stock => {
+                    if (stock.quantity === 0) {
+                        noStock++;
+                    } else if (stock.is_low_stock) {
+                        lowStock++;
+                    } else {
+                        normalStock++;
+                    }
+                });
+
+                const ctx = document.getElementById('stockStatusChart').getContext('2d');
+
+                if (stockStatusChart) {
+                    stockStatusChart.destroy();
+                }
+
+                stockStatusChart = new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: ['正常库存', '低库存', '无库存'],
+                        datasets: [{
+                            data: [normalStock, lowStock, noStock],
+                            backgroundColor: ['#28a745', '#ffc107', '#dc3545']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom'
+                            }
+                        }
+                    }
+                });
+            }
+        })
+        .catch(error => console.error('加载库存状态统计失败:', error));
+}
+
+function loadInOutChart() {
+    fetch('/api/logs/statistics')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const ctx = document.getElementById('inOutChart').getContext('2d');
+
+                if (inOutChart) {
+                    inOutChart.destroy();
+                }
+
+                inOutChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['入库', '出库'],
+                        datasets: [{
+                            label: '数量',
+                            data: [data.data.total_in_quantity, data.data.total_out_quantity],
+                            backgroundColor: ['#28a745', '#dc3545']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            }
+        })
+        .catch(error => console.error('加载入库出库统计失败:', error));
+}
+
+function loadStockDetails() {
+    Promise.all([
+        fetch('/api/products/').then(r => r.json()),
+        fetch('/api/stock/').then(r => r.json()),
+        fetch('/api/logs/statistics').then(r => r.json())
+    ]).then(([productsData, stockData, logsData]) => {
+        if (productsData.success && stockData.success && logsData.success) {
+            const tbody = document.getElementById('stockDetailsTable');
+            let html = '';
+
+            stockData.data.forEach(stock => {
+                const product = productsData.data.find(p => p.id === stock.product_id);
+                if (product) {
+                    const stockValue = stock.quantity * product.price;
+                    const stockStatus = getStockStatus(stock.quantity, stock.min_quantity);
+                    const turnoverRate = calculateTurnoverRate(stock, logsData);
+
+                    html += `
+                        <tr>
+                            <td>${product.name}</td>
+                            <td><span class="badge bg-light text-dark">${product.category || '未分类'}</span></td>
+                            <td>¥${product.price.toFixed(2)}</td>
+                            <td>${stock.quantity}</td>
+                            <td>¥${stockValue.toFixed(2)}</td>
+                            <td>${stock.min_quantity || 0}</td>
+                            <td>${stockStatus}</td>
+                            <td>${turnoverRate}</td>
+                        </tr>
+                    `;
+                }
+            });
+
+            tbody.innerHTML = html || '<tr><td colspan="8" class="text-center text-muted">暂无数据</td></tr>';
+        }
+    }).catch(error => {
+        console.error('加载库存详情失败:', error);
+        document.getElementById('stockDetailsTable').innerHTML = '<tr><td colspan="8" class="text-center text-danger">加载失败</td></tr>';
+    });
+}
+
+function getStockStatus(current, min) {
+    if (current === 0) return '<span class="badge bg-danger">无库存</span>';
+    if (current <= min) return '<span class="badge bg-warning">低库存</span>';
+    return '<span class="badge bg-success">正常</span>';
+}
+
+function calculateTurnoverRate(stock, logsData) {
+    // 简化的周转率计算（实际应该基于时间段）
+    const totalOperations = logsData.data.today_operations || 1;
+    const avgStock = stock.quantity || 1;
+    const rate = (totalOperations / avgStock).toFixed(2);
+    return `${rate}x`;
+}
+
+function applyTimeFilter() {
+    const startDate = document.getElementById('statsStartDate').value;
+    const endDate = document.getElementById('statsEndDate').value;
+
+    if (startDate && endDate) {
+        // 重新加载带时间筛选的数据
+        showLoading();
+        loadStatistics();
+        hideLoading();
+        showAlert('统计数据已更新', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('timeFilterModal')).hide();
+    } else {
+        showAlert('请选择时间范围', 'error');
+    }
+}
+
+function formatChartDate(dateString) {
+    const date = new Date(dateString);
+    return `${date.getMonth() + 1}/${date.getDate()}`;
+}
+</script>
+{% endblock %}

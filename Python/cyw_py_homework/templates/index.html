@@ -1,0 +1,383 @@
+{% extends "base.html" %}
+
+{% block title %}首页 - 库存管理系统{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item active">首页</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="jumbotron bg-light p-5 rounded-3 mb-4">
+            <h1 class="display-4">库存管理系统</h1>
+            <p class="lead">欢迎使用基于 Flask 微服务的库存管理系统。系统提供完整的商品管理、库存操作和数据统计功能。</p>
+            <hr class="my-4">
+            <p>系统采用现代化的技术栈，提供稳定、高效的库存管理解决方案。</p>
+        </div>
+    </div>
+</div>
+
+<!-- 统计卡片 -->
+<div class="row mb-4">
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">商品总数</h6>
+                        <h2 id="totalProducts">-</h2>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-box fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">总库存量</h6>
+                        <h2 id="totalStock">-</h2>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-archive fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">低库存商品</h6>
+                        <h2 id="lowStockCount">-</h2>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-exclamation-triangle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">今日操作</h6>
+                        <h2 id="todayOperations">-</h2>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-clock-history fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 快速操作 -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-lightning"></i> 快速操作
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 col-sm-6 mb-2">
+                        <a href="{{ url_for('main.products') }}#createProduct" class="btn btn-outline-primary w-100">
+                            <i class="bi bi-plus-circle"></i> 添加商品
+                        </a>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-2">
+                        <a href="{{ url_for('main.stock') }}#stockOperation" class="btn btn-outline-success w-100">
+                            <i class="bi bi-plus-square"></i> 库存入库
+                        </a>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-2">
+                        <a href="{{ url_for('main.stock') }}#stockOperation" class="btn btn-outline-danger w-100">
+                            <i class="bi bi-dash-square"></i> 库存出库
+                        </a>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-2">
+                        <a href="{{ url_for('main.logs') }}" class="btn btn-outline-info w-100">
+                            <i class="bi bi-list-ul"></i> 查看记录
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 低库存警告 -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-exclamation-triangle"></i> 低库存警告
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="lowStockList">
+                    <div class="text-center">
+                        <div class="spinner-border spinner-border-sm" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                        <span class="ms-2">正在加载低库存商品...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 最近活动 -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-clock-history"></i> 最近库存变动
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="recentLogs">
+                    <div class="text-center">
+                        <div class="spinner-border spinner-border-sm" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                        <span class="ms-2">正在加载最近记录...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-bar-chart"></i> 操作趋势图
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="trendChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 加载首页统计数据
+    loadDashboardStats();
+    loadLowStockProducts();
+    loadRecentLogs();
+    loadTrendChart();
+});
+
+function loadDashboardStats() {
+    fetch('/api/logs/statistics')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('todayOperations').textContent = data.data.today_operations;
+            }
+        })
+        .catch(error => console.error('加载统计数据失败:', error));
+
+    // 加载商品总数
+    fetch('/api/products/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('totalProducts').textContent = data.pagination.total;
+            }
+        })
+        .catch(error => console.error('加载商品数据失败:', error));
+
+    // 加载库存统计
+    fetch('/api/stock/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                let totalStock = 0;
+                let lowStockCount = 0;
+
+                data.data.forEach(item => {
+                    totalStock += item.quantity;
+                    if (item.is_low_stock) lowStockCount++;
+                });
+
+                document.getElementById('totalStock').textContent = totalStock;
+                document.getElementById('lowStockCount').textContent = lowStockCount;
+            }
+        })
+        .catch(error => console.error('加载库存数据失败:', error));
+}
+
+function loadLowStockProducts() {
+    fetch('/api/stock/low-stock')
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('lowStockList');
+
+            if (data.success && data.data.length > 0) {
+                let html = '<div class="table-responsive"><table class="table table-sm">';
+                html += '<thead><tr><th>商品名称</th><th>当前库存</th><th>最低库存</th><th>操作</th></tr></thead><tbody>';
+
+                data.data.forEach(item => {
+                    html += `<tr>
+                        <td>${item.product_name}</td>
+                        <td><span class="badge bg-danger">${item.quantity}</span></td>
+                        <td>${item.min_quantity}</td>
+                        <td>
+                            <button class="btn btn-sm btn-success" onclick="quickStockIn(${item.product_id})">
+                                <i class="bi bi-plus"></i> 入库
+                            </button>
+                        </td>
+                    </tr>`;
+                });
+
+                html += '</tbody></table></div>';
+                container.innerHTML = html;
+            } else {
+                container.innerHTML = '<p class="text-muted text-center mb-0">暂无低库存商品</p>';
+            }
+        })
+        .catch(error => {
+            console.error('加载低库存数据失败:', error);
+            document.getElementById('lowStockList').innerHTML = '<p class="text-danger text-center mb-0">加载失败</p>';
+        });
+}
+
+function loadRecentLogs() {
+    fetch('/api/logs/?per_page=5')
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('recentLogs');
+
+            if (data.success && data.data.length > 0) {
+                let html = '<div class="list-group list-group-flush">';
+
+                data.data.forEach(log => {
+                    const actionClass = log.action === 'in' ? 'success' : (log.action === 'out' ? 'danger' : 'warning');
+                    const actionText = log.action === 'in' ? '入库' : (log.action === 'out' ? '出库' : '调整');
+
+                    html += `<div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">${log.product_name}</h6>
+                                <p class="mb-1 text-muted">
+                                    <span class="badge bg-${actionClass}">${actionText}</span>
+                                    ${log.quantity > 0 ? '+' : ''}${log.quantity}
+                                    ${log.reason ? ` - ${log.reason}` : ''}
+                                </p>
+                            </div>
+                            <small class="text-muted">${formatDateTime(log.created_at)}</small>
+                        </div>
+                    </div>`;
+                });
+
+                html += '</div>';
+                container.innerHTML = html;
+            } else {
+                container.innerHTML = '<p class="text-muted text-center mb-0">暂无变动记录</p>';
+            }
+        })
+        .catch(error => {
+            console.error('加载最近记录失败:', error);
+            document.getElementById('recentLogs').innerHTML = '<p class="text-danger text-center mb-0">加载失败</p>';
+        });
+}
+
+function loadTrendChart() {
+    fetch('/api/logs/statistics')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.data.recent_trend) {
+                const ctx = document.getElementById('trendChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.data.recent_trend.map(item => item.date),
+                        datasets: [{
+                            label: '操作次数',
+                            data: data.data.recent_trend.map(item => item.count),
+                            borderColor: '#007bff',
+                            backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        })
+        .catch(error => console.error('加载趋势数据失败:', error));
+}
+
+function quickStockIn(productId) {
+    const quantity = prompt('请输入入库数量:');
+    if (quantity && !isNaN(quantity) && quantity > 0) {
+        showLoading();
+
+        fetch('/api/stock/add', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                product_id: productId,
+                quantity: parseInt(quantity),
+                reason: '低库存补充'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            if (data.success) {
+                showAlert('入库成功', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showAlert(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            showAlert('操作失败', 'error');
+            console.error('入库失败:', error);
+        });
+    }
+}
+</script>
+{% endblock %}

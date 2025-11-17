@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}页面未找到 - 库存管理系统{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item active">404 错误</li>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 text-center">
+        <div class="error-page">
+            <h1 class="display-1 text-primary">404</h1>
+            <h2 class="mb-4">页面未找到</h2>
+            <p class="lead mb-4">抱歉，您访问的页面不存在或已被移动。</p>
+            <div class="mb-4">
+                <img src="https://via.placeholder.com/300x200/007bff/ffffff?text=404+Error" class="img-fluid rounded" alt="404 Error">
+            </div>
+            <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                <a href="{{ url_for('main.index') }}" class="btn btn-primary">
+                    <i class="bi bi-house"></i> 返回首页
+                </a>
+                <button class="btn btn-outline-secondary" onclick="history.back()">
+                    <i class="bi bi-arrow-left"></i> 返回上页
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.error-page {
+    padding: 2rem 0;
+}
+.error-page .display-1 {
+    font-size: 6rem;
+    font-weight: 700;
+}
+</style>
+{% endblock %}
